@@ -9,6 +9,13 @@ function main (): void {
     let service: AuthService = new AuthService({
             port: serviceConfig.port,
             host: serviceConfig.host,
+        },
+        {
+            host: serviceConfig.host,
+            port: serviceConfig.port,
+            database: serviceConfig.database,
+            user: serviceConfig.user,
+            password: serviceConfig.password,
         });
 
     service.start();
