@@ -64,7 +64,7 @@ export class AuthService {
 
         this.server.route({
             method: 'POST',
-            path: '/login',
+                path: '/login',
             handler: this.loginHandler.bind(this)
         });
 
@@ -171,7 +171,6 @@ export class AuthService {
             return responseToolkit.response({ error: 'Invalid or expired token' }).code(401);
         }
 
-        // Можно использовать decoded, например decoded.email
         console.log('Token is valid')
         return responseToolkit.response({ message: 'Access granted', user: decoded }).code(200);
     }
