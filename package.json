@@ -19,7 +19,8 @@
   "dependencies": {
     "@hapi/hapi": "^21.4.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.14.1"
+    "pg": "^8.14.1",
+    "typeorm": "^0.3.24"
   },
   "repository": {
     "type": "git",

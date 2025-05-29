@@ -3,7 +3,8 @@ import * as Hapi from "@hapi/hapi";
 import pg from 'pg';
 import { QueryResult } from "pg";
 const { Pool } = pg;
-
+import { UserService} from "./entity/user-service.ts";
+import {DataSource} from "typeorm";
 
 
 export interface AuthServiceOptions {
@@ -37,11 +38,35 @@ export class AuthService {
     private server: Hapi.Server;
     private secretPhrase: string = "secret";
     private pool: pg.Pool;
+    private dataSource: DataSource | undefined;
 
 
     constructor(serviceOptions: AuthServiceOptions, databaseOptions: DatabaseOptions) {
         this.port = serviceOptions.port;
         this.host = serviceOptions.host || 'localhost';
+        let dataSourceResponse = fetch('/internal/data-source', {
+            method: 'GET',
+            headers: {
+                authorization: `Bearer ${process.env.INTERNAL_SERVICE_TOKEN || 'default-token'}`
+            }
+        })
+            .then(response => {
+                response.json().then(data => {this.dataSource = data;})
+            })
+            .catch(error => {
+                console.error('Error fetching data source:', error);
+                throw new Error('Failed to fetch data source');
+            });
+
+        if (!this.dataSource) {
+            throw new Error('Data source is not initialized');
+        }
+        this.dataSource.initialize().then(r => {
+
+        }).catch(error => {
+            console.error('Error initializing data source:', error);
+            throw new Error('Failed to initialize data source');
+        })
 
         this.server = Hapi.server({
             port: serviceOptions.port,
@@ -71,18 +96,26 @@ export class AuthService {
         this.server.route({
             method: 'POST',
             path: '/request-password-reset',
-            handler: this.resetPasswordHandler.bind(this)
+            handler: this.requestResetPasswordHandler.bind(this)
         });
     }
 
-    private async resetPasswordHandler(request: Hapi.Request, responseToolkit: Hapi.ResponseToolkit) {
+    private async requestResetPasswordHandler(request: Hapi.Request, responseToolkit: Hapi.ResponseToolkit) {
         const {email} = request.payload as { email: string };
 
         // Проверь, есть ли такой пользователь
-        const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
-        if (result.rowCount === 0) {
+        if (!email) {
+            return responseToolkit.response({error: 'Email is required'}).code(400);
+        }
+        if (!/\S+@\S+\.\S+/.test(email)) {
+            return responseToolkit.response({error: 'Invalid email format'}).code(400);
+        }
+
+        const user = UserService.getUserByEmail(email);
+        if (!user) {
             return responseToolkit.response({message: 'If that email exists, a reset link has been sent.'}).code(200);
         }
+
 
         const token = jwt.sign({email}, this.secretPhrase, {expiresIn: '15m'});
 
